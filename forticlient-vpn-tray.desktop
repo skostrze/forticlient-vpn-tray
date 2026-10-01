@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=FortiClient VPN Tray
+Comment=System tray indicator for FortiClient VPN
+Exec=/home/slaw/Programy/forticlient-vpn-tray/vpn_tray.py
+Icon=security-low
+Terminal=false
+Categories=Network;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
