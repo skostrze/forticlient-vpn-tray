@@ -37,7 +37,7 @@ FortiClient's built-in GUI/tray often fails on modern Linux desktops (Zorin, Ubu
 
 ## How it works
 
-The key insight that makes this work reliably: `forticlient vpn connect` checks whether its stdin is a **real TTY**. When called from a plain subprocess pipe it spawns a second daemon instance (causing "Load VPN profile was failed"). This tool uses Python's `pty` module to give FortiClient a **pseudo-terminal**, making it behave exactly as if run interactively in a terminal — while the credentials flow through GTK dialogs.
+The key insight that makes this work reliably: `forticlient vpn connect` checks whether its stdin is a **real TTY**. When called from a plain subprocess pipe it spawns a second daemon instance (causing "Load VPN profile was failed"). This tool uses Python's `pty` module to give FortiClient a **pseudo-terminal**, making it behave exactly as if run interactively in a terminal - while the credentials flow through GTK dialogs.
 
 ```
 User clicks profile
