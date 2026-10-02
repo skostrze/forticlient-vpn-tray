@@ -28,6 +28,7 @@ FortiClient's built-in GUI/tray often fails on modern Linux desktops (Zorin, Ubu
 | 🔌 Connect submenu | Lists all profiles from `forticlient vpn list` |
 | 🔑 Password dialog | Pre-filled from local cache, masked input |
 | 🔐 2FA token dialog | Appears **only if** the server prompts for a token |
+| 📜 Certificate prompt | `Confirm (y/n)` auto-accepted — no manual intervention needed |
 | 💾 Password cache | `~/.config/vpn_tray_credentials.json` (owner-readable only) |
 | ⛔ Disconnect | One-click `forticlient vpn disconnect` |
 | 🔔 Notifications | `notify-send` on connect / disconnect events |
@@ -51,6 +52,8 @@ User clicks profile
  pty.openpty() ──► forticlient vpn connect <profile>
        │
        │  reads "Password:" prompt → sends password
+       │
+       ├── "Confirm (y/n)" detected → sends "y" automatically
        │
        ├── no token prompt → done
        │

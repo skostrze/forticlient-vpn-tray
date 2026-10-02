@@ -390,6 +390,15 @@ class VPNIndicator:
                         accumulated = ""
                         continue
 
+                    # Pytanie o certyfikat – automatyczna akceptacja
+                    if 'confirm (y/n)' in lower or 'confirm(y/n)' in lower:
+                        try:
+                            os.write(master_fd, b'y\r')
+                        except OSError:
+                            break
+                        accumulated = ""
+                        continue
+
                     # Prompt tokenu – pokaż dialog i wyślij token
                     if password_sent and not token_asked:
                         for kw in TOKEN_PROMPTS:
