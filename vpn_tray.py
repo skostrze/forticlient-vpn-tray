@@ -248,18 +248,18 @@ class VPNIndicator:
 
         self.menu.append(Gtk.SeparatorMenuItem())
 
-        connect_item = Gtk.MenuItem(label="\U0001f50c Połącz z VPN")
+        self.connect_item = Gtk.MenuItem(label="\U0001f50c Połącz z VPN")
         self.connect_submenu = Gtk.Menu()
-        connect_item.set_submenu(self.connect_submenu)
-        self.menu.append(connect_item)
+        self.connect_item.set_submenu(self.connect_submenu)
+        self.menu.append(self.connect_item)
 
         self._populate_profiles()
 
         self.menu.append(Gtk.SeparatorMenuItem())
 
-        item_disconnect = Gtk.MenuItem(label="\u26d4 Rozłącz VPN")
-        item_disconnect.connect('activate', self.disconnect_vpn)
-        self.menu.append(item_disconnect)
+        self.disconnect_item = Gtk.MenuItem(label="\u26d4 Rozłącz VPN")
+        self.disconnect_item.connect('activate', self.disconnect_vpn)
+        self.menu.append(self.disconnect_item)
 
         item_refresh = Gtk.MenuItem(label="\U0001f504 Odśwież listę profili")
         item_refresh.connect('activate', lambda _: self._populate_profiles())
@@ -509,11 +509,15 @@ class VPNIndicator:
         if connected:
             self.indicator.set_icon_full("security-high", "VPN Połączony")
             self.status_item.set_label("\U0001f7e2 VPN: POŁĄCZONY")
+            self.connect_item.set_sensitive(False)
+            self.disconnect_item.set_sensitive(True)
             if self.last_state is False:
                 self.send_notification("VPN Aktywny", "Pamiętaj o rozłączeniu przed wyłączeniem!")
         else:
             self.indicator.set_icon_full("security-low", "VPN Rozłączony")
             self.status_item.set_label("\u26aa VPN: Rozłączony")
+            self.connect_item.set_sensitive(True)
+            self.disconnect_item.set_sensitive(False)
             if self.last_state is True:
                 self.send_notification("VPN Rozłączony", "VPN został pomyślnie rozłączony.", "low")
 
