@@ -88,7 +88,7 @@ sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-appindicator3
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/forticlient-vpn-tray.git
+git clone https://github.com/skostrze/forticlient-vpn-tray.git
 cd forticlient-vpn-tray
 
 # Make executable
