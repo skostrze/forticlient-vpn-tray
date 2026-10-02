@@ -22,17 +22,17 @@ FortiClient's built-in GUI/tray often fails on modern Linux desktops (Zorin, Ubu
 
 ## Features
 
-| Feature | Details |
-|---|---|
-| 🟢 / ⚪ tray icon | Green = connected, grey = disconnected |
-| 🔌 Connect submenu | Lists all profiles from `forticlient vpn list` |
-| 🔑 Password dialog | Pre-filled from local cache, masked input |
-| 🔐 2FA token dialog | Appears **only if** the server prompts for a token |
+| Feature               | Details                                                       |
+| --------------------- | ------------------------------------------------------------- |
+| 🟢 / ⚪ tray icon      | Green = connected, grey = disconnected                        |
+| 🔌 Connect submenu    | Lists all profiles from `forticlient vpn list`                |
+| 🔑 Password dialog    | Pre-filled from local cache, masked input                     |
+| 🔐 2FA token dialog   | Appears **only if** the server prompts for a token            |
 | 📜 Certificate prompt | `Confirm (y/n)` auto-accepted — no manual intervention needed |
-| 💾 Password cache | `~/.config/vpn_tray_credentials.json` (owner-readable only) |
-| ⛔ Disconnect | One-click `forticlient vpn disconnect` |
-| 🔔 Notifications | `notify-send` on connect / disconnect events |
-| 🔄 Refresh profiles | Reload profile list without restarting |
+| 💾 Password cache     | `~/.config/vpn_tray_credentials.json` (owner-readable only)   |
+| ⛔ Disconnect          | One-click `forticlient vpn disconnect`                        |
+| 🔔 Notifications      | `notify-send` on connect / disconnect events                  |
+| 🔄 Refresh profiles   | Reload profile list without restarting                        |
 
 ---
 
@@ -100,20 +100,24 @@ chmod +x vpn_tray.py
 
 ### Autostart on login
 
+<u>**Edit the**</u> `.desktop` file and set the correct path if you moved the script.
+
 ```bash
 mkdir -p ~/.config/autostart
-cp forticlient-vpn-tray.desktop ~/.config/autostart/
-```
 
-Edit the `.desktop` file and set the correct path if you moved the script.
+cp forticlient-vpn-tray.desktop ~/.config/autostart/
+
+# Update the path to point to your current directory
+sed -i "s|Exec=/<your path>/forticlient-vpn-tray/vpn_tray.py|Exec=$PWD/vpn_tray.py|g" ~/.config/autostart/forticlient-vpn-tray.desktop
+```
 
 ---
 
 ## Files
 
-| File | Description |
-|---|---|
-| `vpn_tray.py` | Main script |
+| File                           | Description                        |
+| ------------------------------ | ---------------------------------- |
+| `vpn_tray.py`                  | Main script                        |
 | `forticlient-vpn-tray.desktop` | Autostart / launcher desktop entry |
 
 ---
