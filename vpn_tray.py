@@ -473,7 +473,7 @@ class VPNIndicator:
         if connected:
             self.send_notification(
                 "VPN Połączony",
-                f"Profil: {profile}\nPamiętaj o rozłączeniu przed wyłączeniem!"
+                f"Pomyślnie połączono z profilem: {profile}"
             )
         else:
             self._show_error_dialog(
@@ -511,8 +511,6 @@ class VPNIndicator:
             self.status_item.set_label("\U0001f7e2 VPN: POŁĄCZONY")
             self.connect_item.set_sensitive(False)
             self.disconnect_item.set_sensitive(True)
-            if self.last_state is False:
-                self.send_notification("VPN Aktywny", "Pamiętaj o rozłączeniu przed wyłączeniem!")
         else:
             self.indicator.set_icon_full("security-low", "VPN Rozłączony")
             self.status_item.set_label("\u26aa VPN: Rozłączony")
