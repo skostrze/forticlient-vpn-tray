@@ -11,7 +11,7 @@ import gi
 
 gi.require_version('Gtk', '3.0')
 gi.require_version('AppIndicator3', '0.1')
-from gi.repository import Gtk, AppIndicator3, GLib
+from gi.repository import Gtk, AppIndicator3, GLib, Gio
 
 APPINDICATOR_ID = 'forti_vpn_indicator'
 
@@ -20,6 +20,67 @@ TOKEN_PROMPTS = ['token:', 'totp:', 'otp:', 'code:', 'two-factor', 'authenticati
 
 # Sentinel – anulowanie dialogu tokenu przez użytkownika
 _CANCELLED = object()
+
+
+# ---------------------------------------------------------------------------
+# Blokada wyłączania systemu (systemd-inhibit)
+# ---------------------------------------------------------------------------
+class ShutdownInhibitor:
+    """Blokada systemd (inhibitor), która informuje system o aktywnym połączeniu VPN.
+    W GNOME / Zorin podczas próby wyłączenia komputera system wyświetli komunikat
+    ostrzegający o aktywnym połączeniu VPN z pytaniem czy na pewno wyłączyć.
+    """
+    def __init__(self):
+        self.fd = None
+
+    def acquire(self):
+        if self.fd is not None:
+            return
+        try:
+            bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+            msg = Gio.DBusMessage.new_method_call(
+                "org.freedesktop.login1",
+                "/org/freedesktop/login1",
+                "org.freedesktop.login1.Manager",
+                "Inhibit"
+            )
+            msg.set_body(GLib.Variant("(ssss)", (
+                "shutdown",
+                "FortiClient VPN Tray",
+                "Aktywne połączenie VPN",
+                "delay"
+            )))
+            reply, _ = bus.send_message_with_reply_sync(msg, Gio.DBusSendMessageFlags.NONE, 1000)
+            if reply and reply.get_message_type() == Gio.DBusMessageType.METHOD_RETURN:
+                fd_list = reply.get_unix_fd_list()
+                if fd_list and fd_list.get_length() > 0:
+                    self.fd = fd_list.get(0)
+        except Exception:
+            self.fd = None
+
+    def release(self):
+        if self.fd is not None:
+            try:
+                os.close(self.fd)
+            except OSError:
+                pass
+            self.fd = None
+
+
+def cleanup_stale_connections():
+    """Usuwa ewentualne martwe profile tun z NetworkManager (np. po awaryjnym restarcie)."""
+    try:
+        res = subprocess.run(
+            ["nmcli", "-t", "-f", "NAME,TYPE", "connection", "show"],
+            capture_output=True, text=True, timeout=2
+        )
+        for line in res.stdout.splitlines():
+            name, _, ctype = line.partition(":")
+            if name.startswith("fctvpn") and ctype == "tun":
+                subprocess.run(["nmcli", "connection", "delete", name],
+                               capture_output=True, timeout=2)
+    except Exception:
+        pass
 
 # ---------------------------------------------------------------------------
 # Plik z zapisanymi hasłami (uprawnienia 600 – tylko właściciel)
@@ -230,6 +291,8 @@ class VPNIndicator:
         )
         self.indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
         self.last_state = None
+        self.inhibitor = ShutdownInhibitor()
+        cleanup_stale_connections()
 
         self._build_menu()
 
@@ -489,15 +552,52 @@ class VPNIndicator:
     # ------------------------------------------------------------------
     def disconnect_vpn(self, _):
         subprocess.run(['forticlient', 'vpn', 'disconnect'])
+        cleanup_stale_connections()
+        if self.inhibitor:
+            self.inhibitor.release()
         self.check_vpn()
 
     # ------------------------------------------------------------------
     # Monitorowanie stanu
     # ------------------------------------------------------------------
     def is_vpn_connected(self):
-        """Sprawdzanie obecności interfejsu sieciowego w sysfs (0% CPU)."""
+        """Sprawdzanie obecności AKTYWNEGO interfejsu sieciowego w sysfs (0% CPU).
+        Ignoruje martwe interfejsy fctvpn w stanie 'down' lub bez carrier (np. po restarcie PC).
+        """
         try:
-            return any(dev.startswith("fctvpn") for dev in os.listdir("/sys/class/net"))
+            has_active = False
+            has_stale = False
+            for dev in os.listdir("/sys/class/net"):
+                if dev.startswith("fctvpn"):
+                    operstate_path = f"/sys/class/net/{dev}/operstate"
+                    carrier_path = f"/sys/class/net/{dev}/carrier"
+
+                    is_down = False
+                    if os.path.exists(operstate_path):
+                        try:
+                            with open(operstate_path, "r") as f:
+                                if f.read().strip() == "down":
+                                    is_down = True
+                        except OSError:
+                            pass
+
+                    if not is_down and os.path.exists(carrier_path):
+                        try:
+                            with open(carrier_path, "r") as f:
+                                if f.read().strip() == "0":
+                                    is_down = True
+                        except OSError:
+                            pass
+
+                    if is_down:
+                        has_stale = True
+                    else:
+                        has_active = True
+
+            if has_stale and not has_active:
+                cleanup_stale_connections()
+
+            return has_active
         except OSError:
             return False
 
@@ -511,11 +611,15 @@ class VPNIndicator:
             self.status_item.set_label("\U0001f7e2 VPN: POŁĄCZONY")
             self.connect_item.set_sensitive(False)
             self.disconnect_item.set_sensitive(True)
+            if self.inhibitor:
+                self.inhibitor.acquire()
         else:
             self.indicator.set_icon_full("security-low", "VPN Rozłączony")
             self.status_item.set_label("\u26aa VPN: Rozłączony")
             self.connect_item.set_sensitive(True)
             self.disconnect_item.set_sensitive(False)
+            if self.inhibitor:
+                self.inhibitor.release()
             if self.last_state is True:
                 self.send_notification("VPN Rozłączony", "VPN został pomyślnie rozłączony.", "low")
 
@@ -538,10 +642,24 @@ class VPNIndicator:
         dlg.destroy()
 
     def quit(self, _):
+        if self.inhibitor:
+            self.inhibitor.release()
         Gtk.main_quit()
 
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    VPNIndicator()
+    app = VPNIndicator()
+
+    def handle_signal(signum, frame):
+        try:
+            if app.is_vpn_connected():
+                app.disconnect_vpn(None)
+        except Exception:
+            pass
+        app.quit(None)
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGHUP, handle_signal)
+
     Gtk.main()
