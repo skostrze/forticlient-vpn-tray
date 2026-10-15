@@ -660,6 +660,6 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
-    signal.signal(signal.SIGHUP, handle_signal)
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
     Gtk.main()
